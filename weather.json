@@ -1,0 +1,15 @@
+{
+  "name": "Placeholder",
+  "main": {
+    "temp": 0,
+    "humidity": 0
+  },
+  "weather": [{
+    "description": "Waiting for update",
+    "icon": "01d"
+  }],
+  "wind": {
+    "speed": 0
+  },
+  "timestamp": "2025-05-16T00:00:00Z"
+}
