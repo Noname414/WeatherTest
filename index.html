@@ -1,0 +1,116 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>即時天氣</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .weather-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .weather-icon {
+            width: 100px;
+            height: 100px;
+        }
+        .last-updated {
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="weather-card">
+        <h1>即時天氣</h1>
+        <div id="weather-info">
+            <h2 id="city">載入中...</h2>
+            <img id="weather-icon" class="weather-icon" src="" alt="天氣圖標">
+            <p id="temperature">溫度: 載入中...</p>
+            <p id="description">天氣: 載入中...</p>
+            <p id="humidity">濕度: 載入中...</p>
+            <p id="wind">風速: 載入中...</p>
+            <p class="last-updated" id="last-updated">最後更新: 載入中...</p>
+        </div>
+    </div>
+
+    <script>
+        // 當頁面加載時獲取天氣數據
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('weather.json')
+                .then(response => response.json())
+                .then(data => {
+                    updateWeatherDisplay(data);
+                })
+                .catch(error => {
+                    console.error('Error loading weather data:', error);
+                    document.getElementById('weather-info').innerHTML = 
+                        '<p>無法載入天氣數據，請稍後再試</p>';
+                });
+        });
+
+        function updateWeatherDisplay(data) {
+            document.getElementById('city').textContent = data.name;
+            document.getElementById('temperature').textContent = 
+                `溫度: ${Math.round(data.main.temp)}°C`;
+            document.getElementById('description').textContent = 
+                `天氣: ${data.weather[0].description}`;
+            document.getElementById('humidity').textContent = 
+                `濕度: ${data.main.humidity}%`;
+            document.getElementById('wind').textContent = 
+                `風速: ${data.wind.speed} m/s`;
+            document.getElementById('weather-icon').src = 
+                `https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
+            document.getElementById('last-updated').textContent = 
+                `最後更新: ${new Date(data.timestamp).toLocaleString('zh-TW')}`;
+        }
+    </script>
+</body>
+</html>
